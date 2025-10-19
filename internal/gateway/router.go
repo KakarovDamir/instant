@@ -28,12 +28,22 @@ func SetupRouter(consulClient *consul.Client, sessionMgr session.Manager) *gin.E
 	// Gateway health check
 	r.GET("/health", proxyHandler.Health)
 
-	// Public routes - forward to auth service (no session required)
+	// Auth routes - forward to auth service
 	auth := r.Group("/auth")
 	{
+		// Public auth endpoints (no session required)
 		auth.POST("/request-code", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
 		auth.POST("/verify-code", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
 		auth.POST("/logout", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
+		
+		// Protected user management endpoints (require valid session)
+		users := auth.Group("/users")
+		users.Use(SessionAuthMiddleware(sessionMgr))
+		{
+			users.PATCH("/:id", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
+			users.POST("/:id/request-delete-code", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
+			users.POST("/:id/delete", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
+		}
 	}
 
 	// Protected routes - require valid session
