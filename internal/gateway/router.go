@@ -19,6 +19,7 @@ func SetupRouter(consulClient *consul.Client, sessionMgr session.Manager) *gin.E
 
 	// Global middleware
 	r.Use(gin.Recovery())
+	r.Use(RequestIDMiddleware()) // Must be first to ensure request_id is available
 	r.Use(LoggingMiddleware())
 	r.Use(CORSMiddleware())
 

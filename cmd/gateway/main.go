@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,12 +12,17 @@ import (
 
 	"instant/internal/consul"
 	"instant/internal/gateway"
+	"instant/internal/logger"
 	"instant/internal/session"
 
 	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {
+	// Initialize structured logger
+	log := logger.New()
+	logger.SetDefault(log)
+
 	// Load configuration from environment
 	port := getEnv("GATEWAY_PORT", "8080")
 	consulAddr := getEnv("CONSUL_HTTP_ADDR", "localhost:8500")
@@ -26,22 +31,24 @@ func main() {
 	redisPassword := getEnv("REDIS_PASSWORD", "")
 	redisDB := 0
 
-	log.Println("Starting API Gateway...")
-	log.Printf("Port: %s", port)
-	log.Printf("Consul: %s", consulAddr)
-	log.Printf("Redis: %s", redisAddr)
+	slog.Info("Starting API Gateway",
+		"port", port,
+		"consul_addr", consulAddr,
+		"redis_addr", redisAddr,
+	)
 
 	// Initialize Consul client
 	consulClient, err := consul.NewClientWithToken(consulAddr, consulToken)
 	if err != nil {
-		log.Fatalf("Failed to create Consul client: %v", err)
+		slog.Error("Failed to create Consul client", "error", err)
+		os.Exit(1)
 	}
-	log.Println("Connected to Consul")
+	slog.Info("Connected to Consul")
 
 	// Initialize Redis session store
 	store := session.NewRedisStore(redisAddr, redisPassword, redisDB)
 	sessionMgr := session.NewManager(store)
-	log.Println("Connected to Redis")
+	slog.Info("Connected to Redis")
 
 	// Setup router
 	router := gateway.SetupRouter(consulClient, sessionMgr)
@@ -57,9 +64,10 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("API Gateway listening on port %s", port)
+		slog.Info("API Gateway listening", "port", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+			slog.Error("Failed to start server", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -68,17 +76,18 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down API Gateway...")
+	slog.Info("Shutting down API Gateway")
 
 	// Graceful shutdown with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		slog.Error("Server forced to shutdown", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("API Gateway stopped")
+	slog.Info("API Gateway stopped")
 }
 
 // getEnv retrieves an environment variable or returns a default value
