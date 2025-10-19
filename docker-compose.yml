@@ -1,47 +1,141 @@
 services:
-  app:
+  # API Gateway
+  gateway:
     build:
       context: .
       dockerfile: Dockerfile
       target: prod
     restart: unless-stopped
+    env_file: .env
     ports:
-      - ${PORT}:${PORT}
+      - ${GATEWAY_PORT}:${GATEWAY_PORT}
     environment:
-      APP_ENV: ${APP_ENV}
-      PORT: ${PORT}
-      BLUEPRINT_DB_HOST: ${BLUEPRINT_DB_HOST}
-      BLUEPRINT_DB_PORT: ${BLUEPRINT_DB_PORT}
-      BLUEPRINT_DB_DATABASE: ${BLUEPRINT_DB_DATABASE}
-      BLUEPRINT_DB_USERNAME: ${BLUEPRINT_DB_USERNAME}
-      BLUEPRINT_DB_PASSWORD: ${BLUEPRINT_DB_PASSWORD}
-      BLUEPRINT_DB_SCHEMA: ${BLUEPRINT_DB_SCHEMA}
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      CONSUL_HTTP_ADDR: ${CONSUL_HTTP_ADDR}
+      REDIS_ADDR: ${REDIS_ADDR}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_MAX_AGE: ${SESSION_MAX_AGE}
     depends_on:
-      psql_bp:
+      consul:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - blueprint
-  psql_bp:
-    image: postgres:latest
+    command: ["/app/gateway"]
+
+  # Auth Service
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${BLUEPRINT_DB_DATABASE}
-      POSTGRES_USER: ${BLUEPRINT_DB_USERNAME}
-      POSTGRES_PASSWORD: ${BLUEPRINT_DB_PASSWORD}
+    env_file: .env
     ports:
-      - "${BLUEPRINT_DB_PORT}:5432"
-    volumes:
-      - psql_volume_bp:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${BLUEPRINT_DB_USERNAME} -d ${BLUEPRINT_DB_DATABASE}'"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      - ${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}
+    environment:
+      AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
+      AUTH_SERVICE_HOST: ${AUTH_SERVICE_HOST}
+      CONSUL_HTTP_ADDR: ${CONSUL_HTTP_ADDR}
+      REDIS_ADDR: ${REDIS_ADDR}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_MAX_AGE: ${SESSION_MAX_AGE}
+      EMAIL_MODE: ${EMAIL_MODE}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SCHEMA: ${DB_SCHEMA}
+    depends_on:
+      consul:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - blueprint
+    command: ["/app/auth"]
+
+  # Posts Service (renamed from app)
+  posts-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - ${POSTS_SERVICE_PORT}:${POSTS_SERVICE_PORT}
+    environment:
+      APP_ENV: ${APP_ENV}
+      PORT: ${POSTS_SERVICE_PORT}
+      POSTS_SERVICE_HOST: ${POSTS_SERVICE_HOST}
+      CONSUL_HTTP_ADDR: ${CONSUL_HTTP_ADDR}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SCHEMA: ${DB_SCHEMA}
+    depends_on:
+      consul:
+        condition: service_healthy
+    networks:
+      - blueprint
+    command: ["/app/posts"]
+
+  # Consul for Service Discovery
+  consul:
+    image: hashicorp/consul:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8500:8500"  # HTTP API and Web UI (localhost only)
+      - "8600:8600/udp"  # DNS
+    command: agent -server -ui -bootstrap-expect=1 -client=0.0.0.0
+    environment:
+      CONSUL_BIND_INTERFACE: eth0
+      CONSUL_LOCAL_CONFIG: '{"acl":{"enabled":true,"default_policy":"deny","enable_token_persistence":true,"tokens":{"initial_management":"9e94cffcddcf55c17c0bd5f1507c959a19b9c7e2520fdf9f6f883f2aa57d2489","agent":"9e94cffcddcf55c17c0bd5f1507c959a19b9c7e2520fdf9f6f883f2aa57d2489"}}}'
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8500/v1/status/leader"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - blueprint
+    volumes:
+      - consul_data:/consul/data
+
+  # Redis for Session Storage
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - blueprint
+    volumes:
+      - redis_data:/data
 
 volumes:
-  psql_volume_bp:
+  consul_data:
+  redis_data:
+
 networks:
   blueprint:
