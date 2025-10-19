@@ -1,3 +1,6 @@
+// Package database provides PostgreSQL database access functionality.
+// This is a shared infrastructure package used by services that need database access
+// (currently auth and posts services).
 package database
 
 import (
@@ -22,6 +25,12 @@ type Service interface {
 	// Close terminates the database connection.
 	// It returns an error if the connection cannot be closed.
 	Close() error
+
+	// QueryRow executes a query that returns a single row
+	QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row
+
+	// Exec executes a query without returning rows (INSERT, UPDATE, DELETE)
+	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 }
 
 type service struct {
@@ -29,12 +38,12 @@ type service struct {
 }
 
 var (
-	database   = os.Getenv("BLUEPRINT_DB_DATABASE")
-	password   = os.Getenv("BLUEPRINT_DB_PASSWORD")
-	username   = os.Getenv("BLUEPRINT_DB_USERNAME")
-	port       = os.Getenv("BLUEPRINT_DB_PORT")
-	host       = os.Getenv("BLUEPRINT_DB_HOST")
-	schema     = os.Getenv("BLUEPRINT_DB_SCHEMA")
+	database   = os.Getenv("DB_DATABASE")
+	password   = os.Getenv("DB_PASSWORD")
+	username   = os.Getenv("DB_USERNAME")
+	port       = os.Getenv("DB_PORT")
+	host       = os.Getenv("DB_HOST")
+	schema     = os.Getenv("DB_SCHEMA")
 	dbInstance *service
 )
 
@@ -43,7 +52,7 @@ func New() Service {
 	if dbInstance != nil {
 		return dbInstance
 	}
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema)
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=require&search_path=%s", username, password, host, port, database, schema)
 	db, err := sql.Open("pgx", connStr)
 	if err != nil {
 		log.Fatal(err)
@@ -57,7 +66,7 @@ func New() Service {
 // Health checks the health of the database connection by pinging the database.
 // It returns a map with keys indicating various health statistics.
 func (s *service) Health() map[string]string {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	stats := make(map[string]string)
@@ -67,7 +76,7 @@ func (s *service) Health() map[string]string {
 	if err != nil {
 		stats["status"] = "down"
 		stats["error"] = fmt.Sprintf("db down: %v", err)
-		log.Fatalf("db down: %v", err) // Log the error and terminate the program
+		log.Printf("db down: %v", err) // Log the error but don't terminate
 		return stats
 	}
 
@@ -112,4 +121,14 @@ func (s *service) Health() map[string]string {
 func (s *service) Close() error {
 	log.Printf("Disconnected from database: %s", database)
 	return s.db.Close()
+}
+
+// QueryRow executes a query that returns a single row
+func (s *service) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	return s.db.QueryRowContext(ctx, query, args...)
+}
+
+// Exec executes a query without returning rows (INSERT, UPDATE, DELETE)
+func (s *service) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	return s.db.ExecContext(ctx, query, args...)
 }

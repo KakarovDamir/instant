@@ -1,4 +1,4 @@
-package server
+package posts
 
 import (
 	"github.com/gin-gonic/gin"

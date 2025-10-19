@@ -1,4 +1,6 @@
-package server
+// Package posts implements the posts service logic.
+// This service handles post-related operations and content management.
+package posts
 
 import (
 	"fmt"
