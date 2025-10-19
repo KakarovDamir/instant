@@ -29,6 +29,9 @@ type Service interface {
 	// QueryRow executes a query that returns a single row
 	QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row
 
+	// Query executes a query that returns multiple rows
+	Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+
 	// Exec executes a query without returning rows (INSERT, UPDATE, DELETE)
 	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 }
@@ -126,6 +129,11 @@ func (s *service) Close() error {
 // QueryRow executes a query that returns a single row
 func (s *service) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
 	return s.db.QueryRowContext(ctx, query, args...)
+}
+
+// Query executes a query that returns multiple rows
+func (s *service) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	return s.db.QueryContext(ctx, query, args...)
 }
 
 // Exec executes a query without returning rows (INSERT, UPDATE, DELETE)

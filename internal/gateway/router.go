@@ -51,11 +51,18 @@ func SetupRouter(consulClient *consul.Client, sessionMgr session.Manager) *gin.E
 	api.Use(SessionAuthMiddleware(sessionMgr))
 	{
 		// Posts service
-		// Routes like /api/posts/* -> posts-service/*
+		// Routes like /api/posts/* -> posts-service/posts/*
 		posts := api.Group("/posts")
 		{
-			posts.Any("/*path", proxyHandler.ProxyWithPathRewrite("posts-service", "/api/posts"))
-			posts.Any("", proxyHandler.ProxyRequest("posts-service"))
+			posts.Any("/*path", proxyHandler.ProxyWithPathRewrite("posts-service", "/api"))
+			posts.Any("", proxyHandler.ProxyWithPathRewrite("posts-service", "/api"))
+		}
+
+		// Users endpoints (for posts service)
+		// Routes like /api/users/:id/posts -> posts-service/users/:id/posts
+		users := api.Group("/users")
+		{
+			users.Any("/*path", proxyHandler.ProxyWithPathRewrite("posts-service", "/api"))
 		}
 
 		// Comments service (when implemented)
@@ -86,11 +93,11 @@ func SetupRouter(consulClient *consul.Client, sessionMgr session.Manager) *gin.E
 			feed.Any("", proxyHandler.ProxyRequest("feed-service"))
 		}
 
-		// Files service (when implemented)
+		// Files service
 		files := api.Group("/files")
 		{
-			files.Any("/*path", proxyHandler.ProxyWithPathRewrite("files-service", "/api/files"))
-			files.Any("", proxyHandler.ProxyRequest("files-service"))
+			files.Any("/*path", proxyHandler.ProxyWithPathRewrite("files-service", "/api"))
+			files.Any("", proxyHandler.ProxyWithPathRewrite("files-service", "/api"))
 		}
 	}
 

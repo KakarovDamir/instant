@@ -76,7 +76,14 @@ Complete REST API documentation with examples:
    - User context handling
    - Authorization patterns
 
-3. **[gateway.md](./api/gateway.md)** - Gateway routes (TODO)
+3. **[files.md](./api/files.md)** - File operations
+   - Presigned upload URLs
+   - Presigned download URLs
+   - File deletion
+   - Content type validation
+   - Security considerations
+
+4. **[gateway.md](./api/gateway.md)** - Gateway routes (TODO)
    - Public routes
    - Protected routes
    - Middleware chain

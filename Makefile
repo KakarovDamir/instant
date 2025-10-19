@@ -8,6 +8,7 @@ build:
 	@go build -o bin/gateway cmd/gateway/main.go
 	@go build -o bin/auth cmd/auth/main.go
 	@go build -o bin/posts cmd/posts/main.go
+	@go build -o bin/files cmd/files/main.go
 	@echo "Build complete!"
 
 build-gateway:
@@ -22,6 +23,10 @@ build-posts:
 	@echo "Building posts service..."
 	@go build -o bin/posts cmd/posts/main.go
 
+build-files:
+	@echo "Building files service..."
+	@go build -o bin/files cmd/files/main.go
+
 # Run services locally
 run-gateway:
 	@go run cmd/gateway/main.go
@@ -31,6 +36,9 @@ run-auth:
 
 run-posts:
 	@go run cmd/posts/main.go
+
+run-files:
+	@go run cmd/files/main.go
 
 # Legacy support
 run:
@@ -64,19 +72,13 @@ itest:
 
 # Database migrations
 migrate:
-	@echo "Running migrations..."
-	@if [ ! -f .env.local ]; then \
-		echo "Error: .env.local file not found"; \
-		exit 1; \
-	fi
-	@set -a && . ./.env.local && set +a && \
-	PGPASSWORD="$$DB_PASSWORD" psql \
-		-h "$$DB_HOST" \
-		-p "$$DB_PORT" \
-		-U "$$DB_USERNAME" \
-		-d "$$DB_DATABASE" \
-		< migrations/001_create_users_table.sql
-	@echo "Migration completed successfully!"
+	@./scripts/migrate.sh up
+
+migrate-down:
+	@./scripts/migrate.sh down
+
+migrate-status:
+	@./scripts/migrate.sh status
 
 # Clean the binary
 clean:
@@ -101,4 +103,4 @@ watch:
             fi; \
         fi
 
-.PHONY: all build run test clean watch docker-run docker-down itest migrate
+.PHONY: all build run test clean watch docker-run docker-down itest migrate migrate-down migrate-status

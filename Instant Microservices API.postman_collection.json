@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "cd81e61a-d0ec-415f-9446-e107392e5a34",
 		"name": "Instant Microservices API",
-		"description": "Complete API collection for the Instant microservices platform with passwordless authentication, posts service, and future services (comments, likes, follow, feed, files)",
+		"description": "Complete API collection for the Instant microservices platform with passwordless authentication, posts service, files service (MinIO storage), and future services (comments, likes, follow, feed)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "34961355"
 	},
@@ -266,26 +266,7 @@
 			"name": "Posts Service",
 			"item": [
 				{
-					"name": "Posts Hello World (Protected)",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/posts",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"posts"
-							]
-						},
-						"description": "Hello World endpoint via gateway (requires valid session, X-User-ID header injected by gateway)"
-					},
-					"response": []
-				},
-				{
-					"name": "Posts Service Health (Direct)",
+					"name": "Posts Service Health Check",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -298,36 +279,419 @@
 								"health"
 							]
 						},
-						"description": "Direct health check for posts service (bypasses gateway)"
+						"description": "Health check for posts service"
 					},
 					"response": []
 				},
 				{
-					"name": "Posts Hello World (Direct)",
+					"name": "Create Post (via Gateway - RECOMMENDED)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Post created successfully\", function () {",
+									"    pm.response.to.have.status(201);",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.data.post_id).to.exist;",
+									"    pm.collectionVariables.set(\"post_id\", jsonData.data.post_id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [
 							{
-								"key": "X-User-ID",
-								"value": "{{user_id}}",
-								"description": "Simulating gateway-injected header"
+								"key": "Content-Type",
+								"value": "application/json"
 							}
 						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"caption\": \"Amazing sunset view\",\n    \"image_url\": \"http://example.com/sunset.jpg\"\n}"
+						},
 						"url": {
-							"raw": "{{posts_service_url}}/",
+							"raw": "{{base_url}}/api/posts",
 							"host": [
-								"{{posts_service_url}}"
+								"{{base_url}}"
 							],
 							"path": [
-								""
+								"api",
+								"posts"
 							]
 						},
-						"description": "Direct access to posts service (bypasses gateway, manual X-User-ID header)"
+						"description": "Create a new post (requires valid session cookie). User ID is automatically extracted from session."
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Posts (via Gateway - RECOMMENDED)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts?page=1&page_size=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Get all posts with pagination (requires valid session, max 100 per page)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Single Post (via Gateway - RECOMMENDED)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{post_id}}"
+							]
+						},
+						"description": "Get a specific post by ID (requires valid session)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User's Posts (via Gateway - RECOMMENDED)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts/users/{{user_id}}?page=1&page_size=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"users",
+								"{{user_id}}"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Get all posts by a specific user with pagination (requires valid session)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Post (via Gateway - RECOMMENDED)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"caption\": \"Updated caption text\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{post_id}}"
+							]
+						},
+						"description": "Update post caption and/or image (requires valid session, only owner can update)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Post (via Gateway - RECOMMENDED)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{post_id}}"
+							]
+						},
+						"description": "Delete a post (requires valid session, only owner can delete)"
 					},
 					"response": []
 				}
 			],
-			"description": "Posts service endpoints (currently basic implementation)"
+			"description": "Posts service endpoints - full CRUD operations with caching and pagination"
+		},
+		{
+			"name": "Files Service",
+			"item": [
+				{
+					"name": "Files Service Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{files_service_url}}/health",
+							"host": [
+								"{{files_service_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Health check for files service (direct access)"
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Upload URL (via Gateway - RECOMMENDED)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Upload URL generated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.upload_url).to.exist;",
+									"    pm.expect(jsonData.file_key).to.exist;",
+									"    ",
+									"    // Save file_key and upload_url for next steps",
+									"    pm.collectionVariables.set(\"file_key\", jsonData.file_key);",
+									"    pm.collectionVariables.set(\"upload_url\", jsonData.upload_url);",
+									"    ",
+									"    console.log(\"File Key:\", jsonData.file_key);",
+									"    console.log(\"Upload URL:\", jsonData.upload_url);",
+									"    console.log(\"Expires in:\", jsonData.expires_in_seconds, \"seconds\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"filename\": \"photo.jpg\",\n    \"content_type\": \"image/jpeg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/files/upload-url",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"files",
+								"upload-url"
+							]
+						},
+						"description": "Generate a presigned URL for uploading a file to MinIO. Requires valid session. The URL expires in 15 minutes."
+					},
+					"response": []
+				},
+				{
+					"name": "Upload File to MinIO (Direct)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"File uploaded successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"console.log(\"File uploaded! You can now use the file_key in your posts or other services.\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "image/jpeg",
+								"description": "Must match the content_type from upload URL request"
+							}
+						],
+						"body": {
+							"mode": "file",
+							"file": {}
+						},
+						"url": {
+							"raw": "{{upload_url}}",
+							"host": [
+								"{{upload_url}}"
+							]
+						},
+						"description": "Upload the actual file to MinIO using the presigned URL. This request goes directly to MinIO, not through the gateway.\n\nIMPORTANT: \n1. First run 'Generate Upload URL' to get the upload_url\n2. Select a file in the Body tab (file type)\n3. The Content-Type header must match what you specified in the upload URL request"
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Download URL (via Gateway - RECOMMENDED)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Download URL generated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.download_url).to.exist;",
+									"    ",
+									"    pm.collectionVariables.set(\"download_url\", jsonData.download_url);",
+									"    ",
+									"    console.log(\"Download URL:\", jsonData.download_url);",
+									"    console.log(\"Expires in:\", jsonData.expires_in_seconds, \"seconds\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"file_key\": \"{{file_key}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/files/download-url",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"files",
+								"download-url"
+							]
+						},
+						"description": "Generate a presigned URL for downloading a file from MinIO. Requires valid session. The URL expires in 1 hour."
+					},
+					"response": []
+				},
+				{
+					"name": "Download File from MinIO (Direct)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"File downloaded successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{download_url}}",
+							"host": [
+								"{{download_url}}"
+							]
+						},
+						"description": "Download the file from MinIO using the presigned URL. This request goes directly to MinIO, not through the gateway.\n\nIMPORTANT: First run 'Generate Download URL' to get the download_url"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete File (via Gateway - RECOMMENDED)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"File deleted successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    ",
+									"    console.log(\"File deleted:\", jsonData.file_key);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/files/{{file_key}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"files",
+								"{{file_key}}"
+							]
+						},
+						"description": "Delete a file from MinIO storage. Requires valid session."
+					},
+					"response": []
+				}
+			],
+			"description": "File upload/download operations using MinIO storage with presigned URLs. All endpoints require authentication via Gateway."
 		},
 		{
 			"name": "Testing Workflows",
@@ -457,6 +821,241 @@
 						}
 					],
 					"description": "Complete passwordless authentication workflow from code request to logout"
+				},
+				{
+					"name": "Complete File Upload/Download Flow",
+					"item": [
+						{
+							"name": "1. Login (Get Session)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Login successful\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    var jsonData = pm.response.json();",
+											"    pm.collectionVariables.set(\"session_id\", jsonData.session_id);",
+											"    pm.collectionVariables.set(\"user_id\", jsonData.user.id);",
+											"    console.log(\"Session obtained, ready to upload files\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{user_email}}\",\n    \"code\": \"{{verification_code}}\",\n    \"username\": \"testuser\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/verify-code",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"verify-code"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2. Generate Upload URL",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Upload URL generated\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    var jsonData = pm.response.json();",
+											"    pm.collectionVariables.set(\"file_key\", jsonData.file_key);",
+											"    pm.collectionVariables.set(\"upload_url\", jsonData.upload_url);",
+											"    console.log(\"Upload URL ready, file_key:\", jsonData.file_key);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"filename\": \"test-photo.jpg\",\n    \"content_type\": \"image/jpeg\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/files/upload-url",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"files",
+										"upload-url"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "3. Upload File to MinIO",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"File uploaded\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    console.log(\"File uploaded successfully! You can now create a post with this file_key.\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "image/jpeg"
+									}
+								],
+								"body": {
+									"mode": "file",
+									"file": {}
+								},
+								"url": {
+									"raw": "{{upload_url}}",
+									"host": [
+										"{{upload_url}}"
+									]
+								},
+								"description": "IMPORTANT: Select a file in the Body tab before running"
+							},
+							"response": []
+						},
+						{
+							"name": "4. Create Post with File",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Post created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    var jsonData = pm.response.json();",
+											"    pm.collectionVariables.set(\"post_id\", jsonData.data.post_id);",
+											"    console.log(\"Post created with uploaded file!\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"caption\": \"Check out my uploaded photo!\",\n    \"image_url\": \"{{file_key}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/posts",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"posts"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "5. Generate Download URL",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Download URL generated\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    var jsonData = pm.response.json();",
+											"    pm.collectionVariables.set(\"download_url\", jsonData.download_url);",
+											"    console.log(\"Download URL:\", jsonData.download_url);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"file_key\": \"{{file_key}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/files/download-url",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"files",
+										"download-url"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "6. Download File from MinIO",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{download_url}}",
+									"host": [
+										"{{download_url}}"
+									]
+								},
+								"description": "Download the file to verify it was uploaded correctly"
+							},
+							"response": []
+						}
+					],
+					"description": "Complete file upload workflow: login → generate upload URL → upload to MinIO → create post → generate download URL → download file"
 				}
 			],
 			"description": "Pre-configured workflows for testing common user journeys"
@@ -499,6 +1098,16 @@
 			"type": "string"
 		},
 		{
+			"key": "files_service_url",
+			"value": "http://localhost:8084",
+			"type": "string"
+		},
+		{
+			"key": "minio_url",
+			"value": "http://localhost:9000",
+			"type": "string"
+		},
+		{
 			"key": "user_email",
 			"value": "test@example.com",
 			"type": "string"
@@ -515,6 +1124,26 @@
 		},
 		{
 			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "post_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "file_key",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "upload_url",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "download_url",
 			"value": "",
 			"type": "string"
 		}
