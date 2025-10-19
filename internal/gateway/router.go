@@ -35,13 +35,13 @@ func SetupRouter(consulClient *consul.Client, sessionMgr session.Manager) *gin.E
 		auth.POST("/request-code", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
 		auth.POST("/verify-code", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
 		auth.POST("/logout", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
-		
+
 		// Protected user management endpoints (require valid session)
 		users := auth.Group("/users")
 		users.Use(SessionAuthMiddleware(sessionMgr))
 		{
 			users.PATCH("/:id", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
-			users.POST("/:id/request-delete-code", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
+			users.GET("/:id/request-delete-code", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
 			users.POST("/:id/delete", proxyHandler.ProxyWithPathRewrite("auth-service", "/auth"))
 		}
 	}
