@@ -68,7 +68,7 @@ func main() {
 	users.Use(sessionAuthMiddleware(sessionMgr))
 	{
 		users.PATCH("/:id", authHandler.UpdateUser)
-		users.POST("/:id/request-delete-code", authHandler.RequestDeleteCode)
+		users.GET("/:id/request-delete-code", authHandler.RequestDeleteCode)
 		users.POST("/:id/delete", authHandler.DeleteUser)
 	}
 
