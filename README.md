@@ -1,10 +1,45 @@
 # Project instant
 
-One Paragraph of project description goes here
+A high-performance file operations service built with Go, featuring presigned URLs for direct client-to-storage uploads/downloads using MinIO (S3-compatible storage).
+
+## Features
+
+- **Presigned URLs**: Secure, time-limited URLs for direct file uploads/downloads
+- **S3-Compatible Storage**: Uses MinIO for scalable object storage
+- **Clean Architecture**: Separation of concerns (server, database, storage layers)
+- **Health Checks**: Monitor database and storage service status
+- **Docker Support**: Full Docker Compose setup for easy local development
+- **RESTful API**: Built with Gin framework
+
+## Quick Links
+
+- **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 5 minutes
+- **[File Operations API](FILE_OPERATIONS_API.md)** - Detailed API documentation
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+### Prerequisites
+
+- Go 1.25+ ([installation guide](https://go.dev/doc/install))
+- Docker & Docker Compose
+
+### Installation
+
+1. Clone the repository
+2. Copy environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+3. Start all services:
+   ```bash
+   make docker-run
+   ```
+4. Check health:
+   ```bash
+   curl http://localhost:8080/health
+   ```
+
+For detailed instructions, see [QUICKSTART.md](QUICKSTART.md).
 
 ## MakeFile
 
