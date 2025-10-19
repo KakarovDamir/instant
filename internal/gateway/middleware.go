@@ -1,13 +1,14 @@
 package gateway
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"instant/internal/session"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // SessionAuthMiddleware validates session and injects user context
@@ -25,7 +26,11 @@ func SessionAuthMiddleware(sessionMgr session.Manager) gin.HandlerFunc {
 		// Validate and get session
 		sess, err := sessionMgr.Get(c.Request.Context(), sessionID)
 		if err != nil {
-			log.Printf("Invalid session %s: %v", sessionID, err)
+			slog.Warn("Invalid session",
+				"session_id", sessionID,
+				"error", err.Error(),
+				"request_id", c.GetString("request_id"),
+			)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "unauthorized: invalid session",
 			})
@@ -69,19 +74,95 @@ func CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
-// LoggingMiddleware logs all requests passing through the gateway
+// RequestIDMiddleware generates a unique request ID for distributed tracing
+func RequestIDMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Generate unique request ID
+		requestID := uuid.New().String()
+
+		// Store in context for downstream use
+		c.Set("request_id", requestID)
+
+		// Add to response headers for client correlation
+		c.Writer.Header().Set("X-Request-ID", requestID)
+
+		c.Next()
+	}
+}
+
+// LoggingMiddleware logs all requests passing through the gateway with structured JSON
 func LoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
-		path := c.Request.URL.Path
-		method := c.Request.Method
 
+		// Wrap the response writer to capture response size
+		rw := newResponseWriter(c.Writer)
+		c.Writer = rw
+
+		// Process request
 		c.Next()
 
+		// Calculate latency
 		latency := time.Since(start)
-		statusCode := c.Writer.Status()
+		latencyMs := float64(latency.Milliseconds())
 
-		log.Printf("[Gateway] %s %s | Status: %d | Latency: %v",
-			method, path, statusCode, latency)
+		// Get request details
+		path := c.Request.URL.Path
+		query := c.Request.URL.RawQuery
+		method := c.Request.Method
+		// Use Gin's writer Status() which handles aborted requests correctly
+		status := c.Writer.Status()
+		responseSize := rw.Size()
+		clientIP := c.ClientIP()
+		userAgent := c.Request.UserAgent()
+		requestID := c.GetString("request_id")
+
+		// Build structured log attributes
+		attrs := []any{
+			"request_id", requestID,
+			"method", method,
+			"path", path,
+			"status", status,
+			"latency_ms", latencyMs,
+			"client_ip", clientIP,
+			"user_agent", userAgent,
+			"response_size", responseSize,
+		}
+
+		// Add query string if present
+		if query != "" {
+			attrs = append(attrs, "query", query)
+		}
+
+		// Add user context if authenticated
+		if userID, exists := c.Get("user_id"); exists {
+			attrs = append(attrs, "user_id", userID)
+		}
+		if email, exists := c.Get("email"); exists {
+			attrs = append(attrs, "email", email)
+		}
+
+		// Add upstream service if this was a proxied request
+		if upstreamService, exists := c.Get("upstream_service"); exists {
+			attrs = append(attrs, "upstream_service", upstreamService)
+		}
+
+		// Add error details if present
+		if len(c.Errors) > 0 {
+			attrs = append(attrs, "error", c.Errors.String())
+		}
+
+		// Log with appropriate level based on status code
+		switch {
+		case status >= 500:
+			// Server errors - ERROR level
+			slog.Error("Request failed - server error", attrs...)
+		case status >= 400:
+			// Client errors - WARN level
+			slog.Warn("Request failed - client error", attrs...)
+		default:
+			// Success - INFO level
+			slog.Info("Request completed", attrs...)
+		}
 	}
 }
