@@ -11,11 +11,6 @@ A high-performance file operations service built with Go, featuring presigned UR
 - **Docker Support**: Full Docker Compose setup for easy local development
 - **RESTful API**: Built with Gin framework
 
-## Quick Links
-
-- **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 5 minutes
-- **[File Operations API](FILE_OPERATIONS_API.md)** - Detailed API documentation
-
 ## Getting Started
 
 ### Prerequisites
