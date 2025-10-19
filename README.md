@@ -33,9 +33,7 @@ A high-performance file operations service built with Go, featuring presigned UR
    ```bash
    curl http://localhost:8080/health
    ```
-
-For detailed instructions, see [QUICKSTART.md](QUICKSTART.md).
-
+   
 ## MakeFile
 
 Run build make command with tests
