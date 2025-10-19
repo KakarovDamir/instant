@@ -1,0 +1,522 @@
+{
+	"info": {
+		"_postman_id": "cd81e61a-d0ec-415f-9446-e107392e5a34",
+		"name": "Instant Microservices API",
+		"description": "Complete API collection for the Instant microservices platform with passwordless authentication, posts service, and future services (comments, likes, follow, feed, files)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "34961355"
+	},
+	"item": [
+		{
+			"name": "Gateway",
+			"item": [
+				{
+					"name": "Gateway Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check if the API Gateway is running and healthy"
+					},
+					"response": []
+				}
+			],
+			"description": "API Gateway endpoints"
+		},
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Request Verification Code (via Gateway)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{user_email}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/request-code",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"request-code"
+							]
+						},
+						"description": "Request a 6-digit verification code via email (DEV: check auth service console logs)"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Code and Login (via Gateway)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains user and session\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.user).to.exist;",
+									"    pm.expect(jsonData.session_id).to.exist;",
+									"    ",
+									"    // Save session_id and user_id for subsequent requests",
+									"    pm.collectionVariables.set(\"session_id\", jsonData.session_id);",
+									"    pm.collectionVariables.set(\"user_id\", jsonData.user.id);",
+									"});",
+									"",
+									"pm.test(\"Session cookie is set\", function () {",
+									"    pm.expect(pm.cookies.has('session_id')).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{user_email}}\",\n    \"code\": \"919920\",\n    \"username\": \"zhassulan3\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/verify-code",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"verify-code"
+							]
+						},
+						"description": "Verify the 6-digit code and receive session cookie"
+					},
+					"response": []
+				},
+				{
+					"name": "Logout (via Gateway)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Invalidate the current session and clear session cookie"
+					},
+					"response": []
+				},
+				{
+					"name": "Auth Service Health Check (Direct)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{auth_service_url}}/health",
+							"host": [
+								"{{auth_service_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Direct health check for auth service (bypasses gateway)"
+					},
+					"response": []
+				}
+			],
+			"description": "Passwordless authentication endpoints - all public routes"
+		},
+		{
+			"name": "User Management",
+			"item": [
+				{
+					"name": "Update User Profile",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"zhkainazaro.v@gmail.com\",\n    \"username\": \"zhassulan2\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"users",
+								"{{user_id}}"
+							]
+						},
+						"description": "Update user email and/or username (requires valid session)"
+					},
+					"response": []
+				},
+				{
+					"name": "Request Account Deletion Code",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/users/{{user_id}}/request-delete-code",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"users",
+								"{{user_id}}",
+								"request-delete-code"
+							]
+						},
+						"description": "Request verification code to delete account (check auth service logs for code)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"594683\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/users/{{user_id}}/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"users",
+								"{{user_id}}",
+								"delete"
+							]
+						},
+						"description": "Permanently delete user account after verifying code"
+					},
+					"response": []
+				}
+			],
+			"description": "User profile and account management endpoints (all require valid session)"
+		},
+		{
+			"name": "Posts Service",
+			"item": [
+				{
+					"name": "Posts Hello World (Protected)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							]
+						},
+						"description": "Hello World endpoint via gateway (requires valid session, X-User-ID header injected by gateway)"
+					},
+					"response": []
+				},
+				{
+					"name": "Posts Service Health (Direct)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{posts_service_url}}/health",
+							"host": [
+								"{{posts_service_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Direct health check for posts service (bypasses gateway)"
+					},
+					"response": []
+				},
+				{
+					"name": "Posts Hello World (Direct)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-User-ID",
+								"value": "{{user_id}}",
+								"description": "Simulating gateway-injected header"
+							}
+						],
+						"url": {
+							"raw": "{{posts_service_url}}/",
+							"host": [
+								"{{posts_service_url}}"
+							],
+							"path": [
+								""
+							]
+						},
+						"description": "Direct access to posts service (bypasses gateway, manual X-User-ID header)"
+					},
+					"response": []
+				}
+			],
+			"description": "Posts service endpoints (currently basic implementation)"
+		},
+		{
+			"name": "Testing Workflows",
+			"item": [
+				{
+					"name": "Complete Auth Flow",
+					"item": [
+						{
+							"name": "1. Request Code",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Code requested successfully\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"console.log(\"Check auth service console logs for verification code\");"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{user_email}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/request-code",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"request-code"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2. Verify Code",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Login successful\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    var jsonData = pm.response.json();",
+											"    pm.collectionVariables.set(\"session_id\", jsonData.session_id);",
+											"    pm.collectionVariables.set(\"user_id\", jsonData.user.id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{user_email}}\",\n    \"code\": \"{{verification_code}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/verify-code",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"verify-code"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "3. Access Protected Resource",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/posts",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"posts"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "4. Logout",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/auth/logout",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"logout"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Complete passwordless authentication workflow from code request to logout"
+				}
+			],
+			"description": "Pre-configured workflows for testing common user journeys"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "auth_service_url",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "posts_service_url",
+			"value": "http://localhost:8082",
+			"type": "string"
+		},
+		{
+			"key": "user_email",
+			"value": "test@example.com",
+			"type": "string"
+		},
+		{
+			"key": "verification_code",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "session_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
