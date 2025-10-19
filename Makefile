@@ -4,14 +4,37 @@
 all: build test
 
 build:
-	@echo "Building..."
-	
-	
-	@go build -o main cmd/api/main.go
+	@echo "Building all services..."
+	@go build -o bin/gateway cmd/gateway/main.go
+	@go build -o bin/auth cmd/auth/main.go
+	@go build -o bin/posts cmd/posts/main.go
+	@echo "Build complete!"
 
-# Run the application
+build-gateway:
+	@echo "Building gateway..."
+	@go build -o bin/gateway cmd/gateway/main.go
+
+build-auth:
+	@echo "Building auth service..."
+	@go build -o bin/auth cmd/auth/main.go
+
+build-posts:
+	@echo "Building posts service..."
+	@go build -o bin/posts cmd/posts/main.go
+
+# Run services locally
+run-gateway:
+	@go run cmd/gateway/main.go
+
+run-auth:
+	@go run cmd/auth/main.go
+
+run-posts:
+	@go run cmd/posts/main.go
+
+# Legacy support
 run:
-	@go run cmd/api/main.go
+	@go run cmd/posts/main.go
 # Create DB container
 docker-run:
 	@if docker compose up --build 2>/dev/null; then \
@@ -39,10 +62,27 @@ itest:
 	@echo "Running integration tests..."
 	@go test ./internal/database -v
 
+# Database migrations
+migrate:
+	@echo "Running migrations..."
+	@if [ ! -f .env.local ]; then \
+		echo "Error: .env.local file not found"; \
+		exit 1; \
+	fi
+	@set -a && . ./.env.local && set +a && \
+	PGPASSWORD="$$DB_PASSWORD" psql \
+		-h "$$DB_HOST" \
+		-p "$$DB_PORT" \
+		-U "$$DB_USERNAME" \
+		-d "$$DB_DATABASE" \
+		< migrations/001_create_users_table.sql
+	@echo "Migration completed successfully!"
+
 # Clean the binary
 clean:
 	@echo "Cleaning..."
 	@rm -f main
+	@rm -rf bin/
 
 # Live Reload
 watch:
@@ -61,4 +101,4 @@ watch:
             fi; \
         fi
 
-.PHONY: all build run test clean watch docker-run docker-down itest
+.PHONY: all build run test clean watch docker-run docker-down itest migrate
