@@ -10,7 +10,7 @@ type Like struct {
 }
 
 type LikeRequest struct {
-	PostID string `json:"post_id" binding:"required,uuid"`
+	PostID string `json:"post_id" binding:"required"`
 }
 
 type CountResponse struct {
