@@ -24,7 +24,7 @@ services:
         condition: service_healthy
     networks:
       - blueprint
-    command: ["/app/gateway"]
+    command: ['/app/gateway']
 
   # Auth Service
   auth-service:
@@ -65,7 +65,33 @@ services:
         condition: service_healthy
     networks:
       - blueprint
-    command: ["/app/auth"]
+    command: ['/app/auth']
+
+  likes-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - ${LIKES_SERVICE_PORT}:${LIKES_SERVICE_PORT}
+    environment:
+      LIKES_SERVICE_PORT: ${LIKES_SERVICE_PORT}
+      LIKES_SERVICE_HOST: ${LIKES_SERVICE_HOST}
+      CONSUL_HTTP_ADDR: ${CONSUL_HTTP_ADDR}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SCHEMA: ${DB_SCHEMA}
+    depends_on:
+      consul:
+        condition: service_healthy
+    networks:
+      - blueprint
+    command: ['/app/likes']
 
   # Posts Service (renamed from app)
   posts-service:
@@ -93,7 +119,7 @@ services:
         condition: service_healthy
     networks:
       - blueprint
-    command: ["/app/posts"]
+    command: ['/app/posts']
 
   # Files Service
   files-service:
@@ -129,14 +155,14 @@ services:
     image: hashicorp/consul:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8500:8500"  # HTTP API and Web UI (localhost only)
-      - "8600:8600/udp"  # DNS
+      - '127.0.0.1:8500:8500' # HTTP API and Web UI (localhost only)
+      - '8600:8600/udp' # DNS
     command: agent -server -ui -bootstrap-expect=1 -client=0.0.0.0
     environment:
       CONSUL_BIND_INTERFACE: eth0
       CONSUL_LOCAL_CONFIG: '{"acl":{"enabled":true,"default_policy":"deny","enable_token_persistence":true,"tokens":{"initial_management":"9e94cffcddcf55c17c0bd5f1507c959a19b9c7e2520fdf9f6f883f2aa57d2489","agent":"9e94cffcddcf55c17c0bd5f1507c959a19b9c7e2520fdf9f6f883f2aa57d2489"}}}'
     healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8500/v1/status/leader"]
+      test: ['CMD', 'wget', '--spider', '--quiet', 'http://localhost:8500/v1/status/leader']
       interval: 10s
       timeout: 3s
       retries: 3
@@ -150,10 +176,10 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - '6379:6379'
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 3
