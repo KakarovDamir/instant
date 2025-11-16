@@ -17,6 +17,16 @@ func NewHandler(service *Service) *Handler {
 }
 
 // GenerateUploadURL handles POST /files/upload-url
+// @Summary Generate presigned upload URL
+// @Description Generate a presigned URL for uploading a file to S3/MinIO (requires authentication)
+// @Tags files
+// @Accept json
+// @Produce json
+// @Param file body GenerateUploadURLRequest true "File upload request"
+// @Success 200 {object} GenerateUploadURLResponse
+// @Failure 400 {object} ErrorResponse
+// @Security SessionAuth
+// @Router /api/files/upload-url [post]
 func (h *Handler) GenerateUploadURL(c *gin.Context) {
 	var req GenerateUploadURLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -44,6 +54,16 @@ func (h *Handler) GenerateUploadURL(c *gin.Context) {
 }
 
 // GenerateDownloadURL handles POST /files/download-url
+// @Summary Generate presigned download URL
+// @Description Generate a presigned URL for downloading a file from S3/MinIO
+// @Tags files
+// @Accept json
+// @Produce json
+// @Param file body GenerateDownloadURLRequest true "File download request"
+// @Success 200 {object} GenerateDownloadURLResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/files/download-url [post]
 func (h *Handler) GenerateDownloadURL(c *gin.Context) {
 	var req GenerateDownloadURLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -71,6 +91,16 @@ func (h *Handler) GenerateDownloadURL(c *gin.Context) {
 }
 
 // DeleteFile handles DELETE /files/:key
+// @Summary Delete a file
+// @Description Delete a file from S3/MinIO storage (requires authentication)
+// @Tags files
+// @Produce json
+// @Param key path string true "File key"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Security SessionAuth
+// @Router /api/files/{key} [delete]
 func (h *Handler) DeleteFile(c *gin.Context) {
 	fileKey := c.Param("key")
 	if fileKey == "" {

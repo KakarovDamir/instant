@@ -20,6 +20,18 @@ func NewHandler(service *Service) *Handler {
 }
 
 // CreatePost handles POST /posts
+// @Summary Create a new post
+// @Description Create a new post with caption and image URL (requires authentication)
+// @Tags posts
+// @Accept json
+// @Produce json
+// @Param post body CreatePostRequest true "Post creation data"
+// @Success 201 {object} PostResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Security SessionAuth
+// @Router /api/posts [post]
 func (h *Handler) CreatePost(c *gin.Context) {
 	// Get authenticated user ID from context (set by AuthMiddleware)
 	userID, ok := GetUserID(c)
@@ -63,6 +75,16 @@ func (h *Handler) CreatePost(c *gin.Context) {
 }
 
 // GetPost handles GET /posts/:id
+// @Summary Get a post by ID
+// @Description Retrieve a single post by its ID
+// @Tags posts
+// @Produce json
+// @Param id path int true "Post ID"
+// @Success 200 {object} PostResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/posts/{id} [get]
 func (h *Handler) GetPost(c *gin.Context) {
 	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -96,6 +118,15 @@ func (h *Handler) GetPost(c *gin.Context) {
 }
 
 // GetAllPosts handles GET /posts with pagination
+// @Summary Get all posts
+// @Description Retrieve all posts with pagination support
+// @Tags posts
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse
+// @Router /api/posts [get]
 func (h *Handler) GetAllPosts(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
@@ -124,6 +155,17 @@ func (h *Handler) GetAllPosts(c *gin.Context) {
 }
 
 // GetUserPosts handles GET /users/:user_id/posts
+// @Summary Get posts by user
+// @Description Retrieve all posts created by a specific user with pagination
+// @Tags posts
+// @Produce json
+// @Param user_id path string true "User ID (UUID)"
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/users/{user_id}/posts [get]
 func (h *Handler) GetUserPosts(c *gin.Context) {
 	userID, err := uuid.Parse(c.Param("user_id"))
 	if err != nil {
@@ -161,6 +203,21 @@ func (h *Handler) GetUserPosts(c *gin.Context) {
 }
 
 // UpdatePost handles PATCH /posts/:id
+// @Summary Update a post
+// @Description Update post caption and/or image URL (requires authentication and ownership)
+// @Tags posts
+// @Accept json
+// @Produce json
+// @Param id path int true "Post ID"
+// @Param post body UpdatePostRequest true "Post update data"
+// @Success 200 {object} PostResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Security SessionAuth
+// @Router /api/posts/{id} [patch]
 func (h *Handler) UpdatePost(c *gin.Context) {
 	// Get authenticated user ID from context
 	userID, ok := GetUserID(c)
@@ -221,6 +278,19 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 }
 
 // DeletePost handles DELETE /posts/:id
+// @Summary Delete a post
+// @Description Delete a post by ID (requires authentication and ownership)
+// @Tags posts
+// @Produce json
+// @Param id path int true "Post ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Security SessionAuth
+// @Router /api/posts/{id} [delete]
 func (h *Handler) DeletePost(c *gin.Context) {
 	// Get authenticated user ID from context
 	userID, ok := GetUserID(c)

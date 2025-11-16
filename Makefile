@@ -103,4 +103,17 @@ watch:
             fi; \
         fi
 
-.PHONY: all build run test clean watch docker-run docker-down itest migrate migrate-down migrate-status
+# Generate Swagger documentation
+swagger:
+	@echo "Generating Swagger documentation..."
+	@if command -v swag > /dev/null; then \
+		swag init -g cmd/gateway/main.go -o docs/swagger --parseDependency --parseInternal; \
+		echo "Swagger documentation generated in docs/swagger/"; \
+	else \
+		echo "Installing swag..."; \
+		go install github.com/swaggo/swag/cmd/swag@latest; \
+		swag init -g cmd/gateway/main.go -o docs/swagger --parseDependency --parseInternal; \
+		echo "Swagger documentation generated in docs/swagger/"; \
+	fi
+
+.PHONY: all build run test clean watch docker-run docker-down itest migrate migrate-down migrate-status swagger

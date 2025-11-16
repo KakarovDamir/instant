@@ -8,6 +8,8 @@ import (
 	"instant/internal/session"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // SetupRouter configures and returns the gateway router
@@ -28,6 +30,9 @@ func SetupRouter(consulClient *consul.Client, sessionMgr session.Manager) *gin.E
 
 	// Gateway health check
 	r.GET("/health", proxyHandler.Health)
+
+	// Swagger documentation
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Auth routes - forward to auth service
 	auth := r.Group("/auth")

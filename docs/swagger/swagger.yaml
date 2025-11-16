@@ -1,0 +1,1202 @@
+basePath: /
+definitions:
+  auth.AuthResponse:
+    properties:
+      session_id:
+        type: string
+      user:
+        $ref: '#/definitions/auth.User'
+    type: object
+  auth.DeleteUserRequest:
+    properties:
+      code:
+        type: string
+    required:
+    - code
+    type: object
+  auth.RequestCodeRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  auth.UpdateUserRequest:
+    properties:
+      email:
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    type: object
+  auth.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  auth.VerifyCodeRequest:
+    properties:
+      code:
+        type: string
+      email:
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - code
+    - email
+    type: object
+  comments.Comment:
+    properties:
+      body:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      post_id:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  comments.CreateCommentRequest:
+    properties:
+      body:
+        type: string
+      post_id:
+        type: integer
+    required:
+    - body
+    - post_id
+    type: object
+  comments.UpdateCommentRequest:
+    properties:
+      body:
+        type: string
+    required:
+    - body
+    type: object
+  files.ErrorResponse:
+    properties:
+      code:
+        type: string
+      details:
+        type: string
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  files.GenerateDownloadURLRequest:
+    properties:
+      file_key:
+        type: string
+    required:
+    - file_key
+    type: object
+  files.GenerateDownloadURLResponse:
+    properties:
+      download_url:
+        type: string
+      expires_at:
+        description: Unix timestamp
+        type: integer
+    type: object
+  files.GenerateUploadURLRequest:
+    properties:
+      content_type:
+        type: string
+      filename:
+        type: string
+      max_size:
+        description: 'Optional: max file size in bytes'
+        type: integer
+    required:
+    - content_type
+    - filename
+    type: object
+  files.GenerateUploadURLResponse:
+    properties:
+      expires_at:
+        description: Unix timestamp
+        type: integer
+      file_key:
+        type: string
+      upload_url:
+        type: string
+    type: object
+  follow.ErrorResponse:
+    properties:
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  follow.FollowRequest:
+    properties:
+      target_user_id:
+        type: string
+    required:
+    - target_user_id
+    type: object
+  follow.FollowResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  likes.CountResponse:
+    properties:
+      count:
+        type: integer
+      post_id:
+        type: string
+    type: object
+  likes.Like:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      post_id:
+        type: string
+      user_id:
+        type: string
+    type: object
+  likes.LikeRequest:
+    properties:
+      post_id:
+        type: string
+    required:
+    - post_id
+    type: object
+  likes.LikedResponse:
+    properties:
+      liked:
+        type: boolean
+      post_id:
+        type: string
+    type: object
+  posts.CreatePostRequest:
+    properties:
+      caption:
+        maxLength: 1000
+        type: string
+      image_url:
+        description: Can be file_key from MinIO or full URL
+        type: string
+    required:
+    - caption
+    - image_url
+    type: object
+  posts.ErrorResponse:
+    properties:
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  posts.Post:
+    properties:
+      caption:
+        type: string
+      created_at:
+        type: string
+      image_url:
+        type: string
+      post_id:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  posts.PostResponse:
+    properties:
+      data:
+        $ref: '#/definitions/posts.Post'
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  posts.UpdatePostRequest:
+    properties:
+      caption:
+        maxLength: 1000
+        type: string
+      image_url:
+        description: Can be file_key from MinIO or full URL
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@instant.com
+    name: API Support
+  description: |-
+    Microservices API Gateway for Instant social media platform
+    This API provides access to authentication, posts, files, likes, comments, and follow services.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: Instant API Gateway
+  version: "1.0"
+paths:
+  /api/comments:
+    post:
+      consumes:
+      - application/json
+      description: Create a new comment on a post (requires authentication)
+      parameters:
+      - description: Comment creation data
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/comments.CreateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/comments.Comment'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionAuth: []
+      summary: Create a comment
+      tags:
+      - comments
+  /api/comments/{id}:
+    delete:
+      description: Delete a comment by ID (requires authentication and ownership)
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionAuth: []
+      summary: Delete a comment
+      tags:
+      - comments
+    patch:
+      consumes:
+      - application/json
+      description: Update comment body (requires authentication and ownership)
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Comment update data
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/comments.UpdateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/comments.Comment'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionAuth: []
+      summary: Update a comment
+      tags:
+      - comments
+  /api/comments/post/{post_id}:
+    get:
+      description: Retrieve all comments for a specific post
+      parameters:
+      - description: Post ID
+        in: path
+        name: post_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/comments.Comment'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get comments for a post
+      tags:
+      - comments
+  /api/files/{key}:
+    delete:
+      description: Delete a file from S3/MinIO storage (requires authentication)
+      parameters:
+      - description: File key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/files.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/files.ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete a file
+      tags:
+      - files
+  /api/files/download-url:
+    post:
+      consumes:
+      - application/json
+      description: Generate a presigned URL for downloading a file from S3/MinIO
+      parameters:
+      - description: File download request
+        in: body
+        name: file
+        required: true
+        schema:
+          $ref: '#/definitions/files.GenerateDownloadURLRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/files.GenerateDownloadURLResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/files.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/files.ErrorResponse'
+      summary: Generate presigned download URL
+      tags:
+      - files
+  /api/files/upload-url:
+    post:
+      consumes:
+      - application/json
+      description: Generate a presigned URL for uploading a file to S3/MinIO (requires
+        authentication)
+      parameters:
+      - description: File upload request
+        in: body
+        name: file
+        required: true
+        schema:
+          $ref: '#/definitions/files.GenerateUploadURLRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/files.GenerateUploadURLResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/files.ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Generate presigned upload URL
+      tags:
+      - files
+  /api/follow:
+    post:
+      consumes:
+      - application/json
+      description: Follow another user by providing their ID (requires authentication)
+      parameters:
+      - description: Follow request data
+        in: body
+        name: follow
+        required: true
+        schema:
+          $ref: '#/definitions/follow.FollowRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/follow.FollowResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/follow.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/follow.ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Follow a user
+      tags:
+      - follow
+  /api/follow/{user_id}:
+    delete:
+      description: Unfollow a user by their ID (requires authentication)
+      parameters:
+      - description: User ID (UUID) to unfollow
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/follow.FollowResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/follow.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/follow.ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Unfollow a user
+      tags:
+      - follow
+  /api/follow/{user_id}/followers:
+    get:
+      description: Retrieve the list of users who follow the specified user
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/follow.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/follow.ErrorResponse'
+      summary: Get user's followers
+      tags:
+      - follow
+  /api/follow/{user_id}/following:
+    get:
+      description: Retrieve the list of users that the specified user is following
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/follow.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/follow.ErrorResponse'
+      summary: Get users being followed
+      tags:
+      - follow
+  /api/likes:
+    post:
+      consumes:
+      - application/json
+      description: Like a post by providing post ID (requires authentication)
+      parameters:
+      - description: Like request data
+        in: body
+        name: like
+        required: true
+        schema:
+          $ref: '#/definitions/likes.LikeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/likes.Like'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionAuth: []
+      summary: Like a post
+      tags:
+      - likes
+  /api/likes/{post_id}:
+    delete:
+      description: Remove like from a post (requires authentication)
+      parameters:
+      - description: Post ID
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionAuth: []
+      summary: Unlike a post
+      tags:
+      - likes
+  /api/posts:
+    get:
+      description: Retrieve all posts with pagination support
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+      summary: Get all posts
+      tags:
+      - posts
+    post:
+      consumes:
+      - application/json
+      description: Create a new post with caption and image URL (requires authentication)
+      parameters:
+      - description: Post creation data
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/posts.CreatePostRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/posts.PostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Create a new post
+      tags:
+      - posts
+  /api/posts/{id}:
+    delete:
+      description: Delete a post by ID (requires authentication and ownership)
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete a post
+      tags:
+      - posts
+    get:
+      description: Retrieve a single post by its ID
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/posts.PostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+      summary: Get a post by ID
+      tags:
+      - posts
+    patch:
+      consumes:
+      - application/json
+      description: Update post caption and/or image URL (requires authentication and
+        ownership)
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Post update data
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/posts.UpdatePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/posts.PostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Update a post
+      tags:
+      - posts
+  /api/posts/{post_id}/likes/count:
+    get:
+      description: Get the total number of likes for a specific post
+      parameters:
+      - description: Post ID
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/likes.CountResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get like count for a post
+      tags:
+      - likes
+  /api/posts/{post_id}/likes/me:
+    get:
+      description: Check if the authenticated user has liked a specific post
+      parameters:
+      - description: Post ID
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/likes.LikedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - SessionAuth: []
+      summary: Check if current user liked a post
+      tags:
+      - likes
+  /api/users/{user_id}/posts:
+    get:
+      description: Retrieve all posts created by a specific user with pagination
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/posts.ErrorResponse'
+      summary: Get posts by user
+      tags:
+      - posts
+  /logout:
+    post:
+      description: Invalidates the current session
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Logout user
+  /request-code:
+    post:
+      consumes:
+      - application/json
+      description: Generates and sends a verification code to the provided email
+      parameters:
+      - description: Email address
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RequestCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Request verification code
+  /users/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Updates user email and/or username
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update fields
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.User'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update user information
+  /users/{id}/delete:
+    post:
+      consumes:
+      - application/json
+      description: Deletes user account after verifying code
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Verification code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.DeleteUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete user account
+  /users/{id}/request-delete-code:
+    post:
+      description: Sends a verification code to user's email for account deletion
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Request deletion verification code
+  /verify-code:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the provided code and creates a session
+      parameters:
+      - description: Email and verification code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.VerifyCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Verify code and authenticate
+securityDefinitions:
+  SessionAuth:
+    description: Session-based authentication via cookie
+    in: cookie
+    name: session_id
+    type: apiKey
+swagger: "2.0"

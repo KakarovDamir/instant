@@ -12,7 +12,19 @@ type Handler struct {
 
 func NewHandler(svc Service) *Handler { return &Handler{svc: svc} }
 
-// POST /likes  {post_id}
+// Like handles POST /likes
+// @Summary Like a post
+// @Description Like a post by providing post ID (requires authentication)
+// @Tags likes
+// @Accept json
+// @Produce json
+// @Param like body LikeRequest true "Like request data"
+// @Success 201 {object} Like
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security SessionAuth
+// @Router /api/likes [post]
 func (h *Handler) Like(c *gin.Context) {
 	userID := c.GetHeader("X-User-ID")
 	if userID == "" {
@@ -32,7 +44,17 @@ func (h *Handler) Like(c *gin.Context) {
 	c.JSON(http.StatusCreated, like)
 }
 
-// DELETE /likes/:post_id
+// Unlike handles DELETE /likes/:post_id
+// @Summary Unlike a post
+// @Description Remove like from a post (requires authentication)
+// @Tags likes
+// @Produce json
+// @Param post_id path string true "Post ID"
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security SessionAuth
+// @Router /api/likes/{post_id} [delete]
 func (h *Handler) Unlike(c *gin.Context) {
 	userID := c.GetHeader("X-User-ID")
 	if userID == "" {
@@ -48,7 +70,15 @@ func (h *Handler) Unlike(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "ok"})
 }
 
-// GET /posts/:post_id/likes/count
+// Count handles GET /posts/:post_id/likes/count
+// @Summary Get like count for a post
+// @Description Get the total number of likes for a specific post
+// @Tags likes
+// @Produce json
+// @Param post_id path string true "Post ID"
+// @Success 200 {object} CountResponse
+// @Failure 500 {object} map[string]string
+// @Router /api/posts/{post_id}/likes/count [get]
 func (h *Handler) Count(c *gin.Context) {
 	postID := c.Param("post_id")
 	cnt, err := h.svc.Count(c.Request.Context(), postID)
@@ -59,7 +89,17 @@ func (h *Handler) Count(c *gin.Context) {
 	c.JSON(http.StatusOK, CountResponse{PostID: postID, Count: cnt})
 }
 
-// GET /posts/:post_id/likes/me
+// IsLiked handles GET /posts/:post_id/likes/me
+// @Summary Check if current user liked a post
+// @Description Check if the authenticated user has liked a specific post
+// @Tags likes
+// @Produce json
+// @Param post_id path string true "Post ID"
+// @Success 200 {object} LikedResponse
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security SessionAuth
+// @Router /api/posts/{post_id}/likes/me [get]
 func (h *Handler) IsLiked(c *gin.Context) {
 	userID := c.GetHeader("X-User-ID")
 	if userID == "" {
