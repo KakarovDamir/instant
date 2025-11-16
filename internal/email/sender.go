@@ -13,6 +13,7 @@ import (
 // Sender defines the interface for sending emails
 type Sender interface {
 	SendVerificationCode(email, code string) error
+	SendEmailEvent(event EmailEvent) error
 }
 
 // Config holds email configuration
@@ -57,6 +58,20 @@ func (s *logSender) SendVerificationCode(email, code string) error {
 	return nil
 }
 
+func (s *logSender) SendEmailEvent(event EmailEvent) error {
+	switch event.EventType {
+	case EmailTypeVerificationCode:
+		code, ok := event.Data["code"].(string)
+		if !ok {
+			return fmt.Errorf("invalid verification code data")
+		}
+		return s.SendVerificationCode(event.Recipient, code)
+	default:
+		log.Printf("[DEV] Email event for %s: type=%s, data=%v", event.Recipient, event.EventType, event.Data)
+		return nil
+	}
+}
+
 // smtpSender sends emails via SMTP (production mode)
 type smtpSender struct {
 	config *Config
@@ -88,6 +103,19 @@ func (s *smtpSender) SendVerificationCode(email, code string) error {
 
 	log.Printf("Verification code sent to %s via SMTP", email)
 	return nil
+}
+
+func (s *smtpSender) SendEmailEvent(event EmailEvent) error {
+	switch event.EventType {
+	case EmailTypeVerificationCode:
+		code, ok := event.Data["code"].(string)
+		if !ok {
+			return fmt.Errorf("invalid verification code data")
+		}
+		return s.SendVerificationCode(event.Recipient, code)
+	default:
+		return fmt.Errorf("unsupported email type: %s", event.EventType)
+	}
 }
 
 func (s *smtpSender) buildEmailBody(email, code string) string {

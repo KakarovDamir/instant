@@ -52,6 +52,10 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME}
+      # Kafka configuration
+      ENABLE_KAFKA: ${ENABLE_KAFKA}
+      KAFKA_BROKERS: ${KAFKA_BROKERS}
+      KAFKA_TOPIC_EMAIL_EVENTS: ${KAFKA_TOPIC_EMAIL_EVENTS}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       DB_DATABASE: ${DB_DATABASE}
@@ -66,6 +70,45 @@ services:
     networks:
       - blueprint
     command: ['/app/auth']
+
+  # Email Service (Kafka Consumer)
+  email-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - ${EMAIL_SERVICE_PORT}:${EMAIL_SERVICE_PORT}
+    environment:
+      EMAIL_SERVICE_PORT: ${EMAIL_SERVICE_PORT}
+      EMAIL_SERVICE_HOST: ${EMAIL_SERVICE_HOST}
+      CONSUL_HTTP_ADDR: ${CONSUL_HTTP_ADDR}
+      REDIS_ADDR: ${REDIS_ADDR}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+      # Kafka configuration
+      KAFKA_BROKERS: ${KAFKA_BROKERS}
+      KAFKA_TOPIC_EMAIL_EVENTS: ${KAFKA_TOPIC_EMAIL_EVENTS}
+      KAFKA_TOPIC_EMAIL_DLQ: ${KAFKA_TOPIC_EMAIL_DLQ}
+      KAFKA_CONSUMER_GROUP: ${KAFKA_CONSUMER_GROUP}
+      # Email/SMTP configuration
+      EMAIL_MODE: ${EMAIL_MODE}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME}
+    depends_on:
+      consul:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - blueprint
+    command: ['/app/email']
 
   likes-service:
     build:

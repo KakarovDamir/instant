@@ -13,7 +13,8 @@ import (
 	"time"
 
 	"instant/internal/database"
-	"instant/internal/email"
+	emailpkg "instant/internal/email"
+	kafkapkg "instant/internal/kafka"
 	"instant/internal/session"
 
 	"github.com/google/uuid"
@@ -49,17 +50,32 @@ type Service interface {
 
 // service implements the Service interface
 type service struct {
-	db          database.Service
-	codeStore   session.Store
-	emailSender email.Sender
+	db            database.Service
+	codeStore     session.Store
+	emailSender   emailpkg.Sender // Kept for backwards compatibility
+	kafkaProducer *kafkapkg.Producer
+	useKafka      bool // Flag to enable/disable Kafka
 }
 
-// NewService creates a new authentication service
-func NewService(db database.Service, codeStore session.Store, emailSender email.Sender) Service {
+// NewService creates a new authentication service (legacy, without Kafka)
+func NewService(db database.Service, codeStore session.Store, emailSender emailpkg.Sender) Service {
 	return &service{
-		db:          db,
-		codeStore:   codeStore,
-		emailSender: emailSender,
+		db:            db,
+		codeStore:     codeStore,
+		emailSender:   emailSender,
+		kafkaProducer: nil,
+		useKafka:      false,
+	}
+}
+
+// NewServiceWithKafka creates a new authentication service with Kafka support
+func NewServiceWithKafka(db database.Service, codeStore session.Store, emailSender emailpkg.Sender, kafkaProducer *kafkapkg.Producer) Service {
+	return &service{
+		db:            db,
+		codeStore:     codeStore,
+		emailSender:   emailSender, // Fallback if Kafka fails
+		kafkaProducer: kafkaProducer,
+		useKafka:      kafkaProducer != nil,
 	}
 }
 
@@ -75,13 +91,48 @@ func (s *service) RequestCode(ctx context.Context, email string) error {
 		return fmt.Errorf("failed to store verification code: %w", err)
 	}
 
-	// Send verification code via email
-	err = s.emailSender.SendVerificationCode(email, code)
-	if err != nil {
-		return fmt.Errorf("failed to send verification code: %w", err)
+	// Send verification code via Kafka or direct email
+	if s.useKafka && s.kafkaProducer != nil {
+		// Send via Kafka (asynchronous - returns immediately, delivery confirmed in background)
+		event := emailpkg.EmailEvent{
+			MessageID: uuid.New().String(), // Generate unique ID for deduplication
+			EventType: emailpkg.EmailTypeVerificationCode,
+			Timestamp: time.Now(),
+			Recipient: email,
+			Data: map[string]interface{}{
+				"code":       code,
+				"expires_in": "10m",
+			},
+		}
+
+		// Publish asynchronously - this returns immediately after queuing
+		err = s.kafkaProducer.PublishEmailEvent(s.getKafkaTopic(), event)
+		if err != nil {
+			// Only fails if message couldn't be queued (e.g., producer buffer full)
+			log.Printf("Failed to queue message to Kafka, falling back to direct email: %v", err)
+			// Fallback to direct email
+			err = s.emailSender.SendVerificationCode(email, code)
+			if err != nil {
+				return fmt.Errorf("failed to send verification code: %w", err)
+			}
+		} else {
+			log.Printf("Verification code queued to Kafka for email: %s", email)
+		}
+	} else {
+		// Send directly via email (legacy mode)
+		err = s.emailSender.SendVerificationCode(email, code)
+		if err != nil {
+			return fmt.Errorf("failed to send verification code: %w", err)
+		}
 	}
 
 	return nil
+}
+
+// getKafkaTopic returns the Kafka topic for email events
+func (s *service) getKafkaTopic() string {
+	// Could be configurable, but we'll use the default for now
+	return "email-events"
 }
 
 // VerifyCode verifies the provided code and returns the user

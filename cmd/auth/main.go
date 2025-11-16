@@ -14,6 +14,8 @@ import (
 	"instant/internal/consul"
 	"instant/internal/database"
 	"instant/internal/email"
+	kafkapkg "instant/internal/kafka"
+	"instant/internal/logger"
 	"instant/internal/session"
 
 	"github.com/gin-gonic/gin"
@@ -45,13 +47,42 @@ func main() {
 	sessionMgr := session.NewManager(store)
 	log.Println("Connected to Redis")
 
+	// Initialize logger
+	lgr := logger.New()
+
 	// Initialize email sender
 	emailConfig := email.NewConfig()
 	emailSender := email.NewSender(emailConfig)
 	log.Printf("Email mode: %s", emailConfig.Mode)
 
-	// Initialize auth service and handler
-	authService := auth.NewService(db, store, emailSender)
+	// Initialize Kafka producer (optional)
+	var kafkaProducer *kafkapkg.Producer
+	var authService auth.Service
+
+	kafkaBrokers := getEnv("KAFKA_BROKERS", "")
+	enableKafka := getEnv("ENABLE_KAFKA", "true") // Enable by default
+
+	if kafkaBrokers != "" && enableKafka == "true" {
+		kafkaConfig, err := kafkapkg.LoadConfig()
+		if err != nil {
+			log.Printf("Failed to load Kafka config, using direct email: %v", err)
+			authService = auth.NewService(db, store, emailSender)
+		} else {
+			kafkaProducer, err = kafkapkg.NewProducer(kafkaConfig, lgr)
+			if err != nil {
+				log.Printf("Failed to create Kafka producer, using direct email: %v", err)
+				authService = auth.NewService(db, store, emailSender)
+			} else {
+				log.Printf("Kafka producer initialized: %s", kafkaBrokers)
+				authService = auth.NewServiceWithKafka(db, store, emailSender, kafkaProducer)
+				defer kafkaProducer.Close()
+			}
+		}
+	} else {
+		log.Println("Kafka disabled, using direct email")
+		authService = auth.NewService(db, store, emailSender)
+	}
+
 	authHandler := auth.NewHandler(authService, sessionMgr)
 
 	// Setup Gin router
