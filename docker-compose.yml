@@ -220,6 +220,39 @@ services:
       - blueprint
     command: ['/app/files']
 
+
+   # Follow Service
+  follow-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - ${FOLLOW_SERVICE_PORT}:${FOLLOW_SERVICE_PORT}
+    environment:
+      FOLLOW_SERVICE_PORT: ${FOLLOW_SERVICE_PORT}
+      FOLLOW_SERVICE_HOST: ${FOLLOW_SERVICE_HOST}
+      CONSUL_HTTP_ADDR: ${CONSUL_HTTP_ADDR}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SCHEMA: ${DB_SCHEMA}
+      REDIS_ADDR: ${REDIS_ADDR}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+    depends_on:
+      consul:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - blueprint
+    command: ["/app/follow"]
+
   # Consul for Service Discovery
   consul:
     image: hashicorp/consul:latest
