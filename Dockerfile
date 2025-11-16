@@ -14,7 +14,8 @@ RUN go build -o /app/gateway cmd/gateway/main.go && \
     go build -o /app/email cmd/email/main.go && \
     go build -o /app/posts cmd/posts/main.go && \
     go build -o /app/files cmd/files/main.go && \
-    go build -o /app/likes cmd/likes/main.go
+    go build -o /app/likes cmd/likes/main.go && \
+    go build -o /app/comments cmd/comments/main.go
 
 FROM debian:bookworm-slim AS prod
 
@@ -32,6 +33,7 @@ COPY --from=build /app/email /app/email
 COPY --from=build /app/posts /app/posts
 COPY --from=build /app/files /app/files
 COPY --from=build /app/likes /app/likes
+COPY --from=build /app/comments /app/comments
 
 # Default command (can be overridden in docker-compose)
 CMD ["./gateway"]
