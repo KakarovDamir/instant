@@ -15,8 +15,28 @@ import (
 	"instant/internal/logger"
 	"instant/internal/session"
 
+	_ "instant/docs/swagger"
 	_ "github.com/joho/godotenv/autoload"
 )
+
+// @title Instant API Gateway
+// @version 1.0
+// @description Microservices API Gateway for Instant social media platform
+// @description This API provides access to authentication, posts, files, likes, comments, and follow services.
+
+// @contact.name API Support
+// @contact.email support@instant.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /
+
+// @securityDefinitions.apikey SessionAuth
+// @in cookie
+// @name session_id
+// @description Session-based authentication via cookie
 
 func main() {
 	// Initialize structured logger

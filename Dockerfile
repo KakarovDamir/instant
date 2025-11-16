@@ -15,7 +15,7 @@ RUN go build -o /app/gateway cmd/gateway/main.go && \
     go build -o /app/posts cmd/posts/main.go && \
     go build -o /app/files cmd/files/main.go && \
     go build -o /app/likes cmd/likes/main.go && \
-    go build -o /app/comments cmd/comments/main.go
+    go build -o /app/comments cmd/comments/main.go && \
     go build -o /app/follow cmd/follow/main.go 
 
 FROM debian:bookworm-slim AS prod

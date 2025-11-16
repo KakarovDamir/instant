@@ -17,8 +17,19 @@ func getUserID(c *gin.Context) string {
     return c.GetHeader("X-User-ID")
 }
 
-// POST /
-// Create comment
+// Create handles POST /
+// @Summary Create a comment
+// @Description Create a new comment on a post (requires authentication)
+// @Tags comments
+// @Accept json
+// @Produce json
+// @Param comment body CreateCommentRequest true "Comment creation data"
+// @Success 201 {object} Comment
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security SessionAuth
+// @Router /api/comments [post]
 func (h *Handler) Create(c *gin.Context) {
     userID := getUserID(c)
     if userID == "" {
@@ -40,7 +51,20 @@ func (h *Handler) Create(c *gin.Context) {
     c.JSON(http.StatusCreated, comment)
 }
 
-// PATCH /:id
+// Update handles PATCH /:id
+// @Summary Update a comment
+// @Description Update comment body (requires authentication and ownership)
+// @Tags comments
+// @Accept json
+// @Produce json
+// @Param id path int true "Comment ID"
+// @Param comment body UpdateCommentRequest true "Comment update data"
+// @Success 200 {object} Comment
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security SessionAuth
+// @Router /api/comments/{id} [patch]
 func (h *Handler) Update(c *gin.Context) {
     userID := getUserID(c)
     if userID == "" {
@@ -64,7 +88,17 @@ func (h *Handler) Update(c *gin.Context) {
     c.JSON(http.StatusOK, comment)
 }
 
-// DELETE /:id
+// Delete handles DELETE /:id
+// @Summary Delete a comment
+// @Description Delete a comment by ID (requires authentication and ownership)
+// @Tags comments
+// @Produce json
+// @Param id path int true "Comment ID"
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security SessionAuth
+// @Router /api/comments/{id} [delete]
 func (h *Handler) Delete(c *gin.Context) {
     userID := getUserID(c)
     if userID == "" {
@@ -81,7 +115,15 @@ func (h *Handler) Delete(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
 
-// GET /post/:post_id
+// List handles GET /post/:post_id
+// @Summary Get comments for a post
+// @Description Retrieve all comments for a specific post
+// @Tags comments
+// @Produce json
+// @Param post_id path int true "Post ID"
+// @Success 200 {array} Comment
+// @Failure 500 {object} map[string]string
+// @Router /api/comments/post/{post_id} [get]
 func (h *Handler) List(c *gin.Context) {
     postID, _ := strconv.ParseInt(c.Param("post_id"), 10, 64)
 
