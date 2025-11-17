@@ -1,28 +1,24 @@
 package follow
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
+import "time"
 
 type Follow struct {
-	FollowID    int64     `json:"follow_id" db:"follow_id"`
-	FollowerID  uuid.UUID `json:"follower_id" db:"follower_id"`    // user who follows
-	FollowingID uuid.UUID `json:"following_id" db:"following_id"` // user being followed
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	ID         string    `json:"id"`
+	FollowerID string    `json:"follower_id"`
+	FolloweeID string    `json:"followee_id"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type FollowRequest struct {
-	TargetUserID uuid.UUID `json:"target_user_id" binding:"required"`
+	FolloweeID string `json:"followee_id" binding:"required"`
 }
 
-type FollowResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message,omitempty"`
+type CountResponse struct {
+	UserID string `json:"user_id"`
+	Count  int64  `json:"count"`
 }
 
-type ErrorResponse struct {
-	Success bool   `json:"success"`
-	Error   string `json:"error"`
+type FollowingResponse struct {
+	UserID   string `json:"user_id"`
+	Following bool  `json:"following"`
 }

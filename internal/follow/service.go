@@ -2,102 +2,95 @@ package follow
 
 import (
 	"context"
-	_ "encoding/json"
+	"errors"
 	"fmt"
-	"log"
 	"time"
 
+	"instant/internal/database"
+
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
-type Service struct {
-	repo  *Repository
-	cache *redis.Client
+var (
+	ErrInvalidInput = errors.New("invalid input")
+)
+
+type Service interface {
+	Follow(ctx context.Context, followerID, followeeID string) (*Follow, error)
+	Unfollow(ctx context.Context, followerID, followeeID string) (int64, error)
+	FollowersCount(ctx context.Context, userID string) (int64, error)
+	FollowingCount(ctx context.Context, userID string) (int64, error)
+	IsFollowing(ctx context.Context, followerID, followeeID string) (bool, error)
 }
 
-func NewService(repo *Repository, redisAddr, redisPassword string, redisDB int) *Service {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
-		Password: redisPassword,
-		DB:       redisDB,
-	})
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Printf("Warning: Redis connection failed: %v", err)
-		rdb = nil
-	} else {
-		log.Println("Redis connected for follow service")
-	}
-
-	return &Service{
-		repo:  repo,
-		cache: rdb,
-	}
+type service struct {
+	db database.Service
 }
 
-func (s *Service) Follow(ctx context.Context, followerID, followingID uuid.UUID) error {
-	if followerID == followingID {
-		return fmt.Errorf("cannot follow yourself")
+func NewService(db database.Service) Service {
+	return &service{db: db}
+}
+
+func (s *service) Follow(ctx context.Context, followerID, followeeID string) (*Follow, error) {
+	if followerID == "" || followeeID == "" {
+		return nil, ErrInvalidInput
 	}
 
-	err := s.repo.Follow(ctx, followerID, followingID)
+	f := &Follow{
+		ID:         uuid.New().String(),
+		FollowerID: followerID,
+		FolloweeID: followeeID,
+		CreatedAt:  time.Now(),
+	}
+
+	const q = `
+		INSERT INTO follow (id, follower_id, followee_id, created_at)
+		VALUES ($1,$2,$3,$4)
+		ON CONFLICT (follower_id, followee_id) DO NOTHING
+	`
+
+	if _, err := s.db.Exec(ctx, q, f.ID, f.FollowerID, f.FolloweeID, f.CreatedAt); err != nil {
+		return nil, fmt.Errorf("insert follow: %w", err)
+	}
+
+	return f, nil
+}
+
+func (s *service) Unfollow(ctx context.Context, followerID, followeeID string) (int64, error) {
+	const q = `DELETE FROM follow WHERE follower_id=$1 AND followee_id=$2`
+
+	res, err := s.db.Exec(ctx, q, followerID, followeeID)
 	if err != nil {
-		return err
+		return 0, fmt.Errorf("delete follow: %w", err)
 	}
 
-	s.invalidateUserCache(ctx, followerID)
-	s.invalidateUserCache(ctx, followingID)
-
-	// ---- NOTIFICATION HOOK ----
-	s.sendFollowNotification(followerID, followingID)
-
-	return nil
+	return res.RowsAffected()
 }
 
-func (s *Service) Unfollow(ctx context.Context, followerID, followingID uuid.UUID) error {
-	err := s.repo.Unfollow(ctx, followerID, followingID)
+func (s *service) FollowersCount(ctx context.Context, userID string) (int64, error) {
+	const q = `SELECT COUNT(*) FROM follow WHERE followee_id=$1`
+
+	var cnt int64
+	err := s.db.QueryRow(ctx, q, userID).Scan(&cnt)
+	return cnt, err
+}
+
+func (s *service) FollowingCount(ctx context.Context, userID string) (int64, error) {
+	const q = `SELECT COUNT(*) FROM follow WHERE follower_id=$1`
+
+	var cnt int64
+	err := s.db.QueryRow(ctx, q, userID).Scan(&cnt)
+	return cnt, err
+}
+
+func (s *service) IsFollowing(ctx context.Context, followerID, followeeID string) (bool, error) {
+	const q = `SELECT 1 FROM follow WHERE follower_id=$1 AND followee_id=$2 LIMIT 1`
+
+	var one int
+	err := s.db.QueryRow(ctx, q, followerID, followeeID).Scan(&one)
+
 	if err != nil {
-		return err
+		return false, nil
 	}
-
-	s.invalidateUserCache(ctx, followerID)
-	s.invalidateUserCache(ctx, followingID)
-
-	return nil
-}
-
-// ---- Cache invalidation ----
-
-func (s *Service) invalidateUserCache(ctx context.Context, userID uuid.UUID) {
-	if s.cache != nil {
-		pattern := fmt.Sprintf("follows:user:%s:*", userID.String())
-		s.deleteByPattern(ctx, pattern)
-	}
-}
-
-func (s *Service) deleteByPattern(ctx context.Context, pattern string) {
-	iter := s.cache.Scan(ctx, 0, pattern, 100).Iterator()
-	for iter.Next(ctx) {
-		s.cache.Del(ctx, iter.Val())
-	}
-}
-
-// ---- Notification (simple placeholder, you can integrate Kafka/SQS later) ----
-
-func (s *Service) sendFollowNotification(followerID, followingID uuid.UUID) {
-	log.Printf("Notification: %s followed %s", followerID, followingID)
-}
-
-func (s *Service) ListFollowers(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	// Optional: implement Redis caching
-	return s.repo.ListFollowers(ctx, userID)
-}
-
-func (s *Service) ListFollowing(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	// Optional: implement Redis caching
-	return s.repo.ListFollowing(ctx, userID)
+	return true, nil
 }
