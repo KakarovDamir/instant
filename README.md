@@ -4,50 +4,30 @@ One Paragraph of project description goes here
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
-
-## MakeFile
-
-Run build make command with tests
-```bash
-make all
+Make sure that .env is configured, and after that run:
+``` bash
+docker compose up
 ```
 
-Build the application
+Architecture:
+![Architectire in c4](./architecture.svg "Instant")
+
+Description:
+
+
+
+
+To get swagger documentation firstly run:
 ```bash
-make build
+make swagger
 ```
 
-Run the application
-```bash
-make run
-```
-Create DB container
-```bash
-make docker-run
-```
+Then open: http://localhost:8080/swagger
 
-Shutdown DB Container
-```bash
-make docker-down
-```
 
-DB Integrations Test:
-```bash
-make itest
-```
+Alternatively you can use Postman collection:
+instant.postman_collection.json 
 
-Live reload the application:
-```bash
-make watch
-```
 
-Run the test suite:
-```bash
-make test
-```
 
-Clean up binary from the last build:
-```bash
-make clean
-```
+Annotation: project was started using [go-blueprint](https://go-blueprint.dev/), so there are some artifacts in commit history.
